@@ -7,16 +7,13 @@ from bsp2obj.constants import *
 
 from PIL import Image
 
-class Edge(object):
-    def __init__(self, vert1, vert2):
-        self.vert1 = vert1
-        self.vert2 = vert2
+class LumpHeader(object):
+    def __init__(self, offset, length):
+        self.offset = offset
+        self.length = length
 
-class Face(object):
-    def __init__(self, firstEdgeIndex, numEdges, texInfoID):
-        self.firstEdgeIndex = firstEdgeIndex
-        self.numEdges = numEdges
-        self.texInfoID = texInfoID
+    def __repr__(self):
+        return "LumpHeader (offset: {}, length: {})".format(self.offset, self.length)
 
 class TextureInfo(object):
     def __init__(self, name, uAxis, uOffset, vAxis, vOffset, texID, animated):
@@ -34,13 +31,16 @@ class TextureGroup(object):
         self.uvIndices = uvIndices
         self.normalIndices = normalIndices
 
-class LumpHeader(object):
-    def __init__(self, offset, length):
-        self.offset = offset
-        self.length = length
+class Face(object):
+    def __init__(self, firstEdgeIndex, numEdges, texInfoID):
+        self.firstEdgeIndex = firstEdgeIndex
+        self.numEdges = numEdges
+        self.texInfoID = texInfoID
 
-    def __repr__(self):
-        return "LumpHeader (offset: {}, length: {})".format(self.offset, self.length)
+class Edge(object):
+    def __init__(self, vert1, vert2):
+        self.vert1 = vert1
+        self.vert2 = vert2
 
 class BSP(object):
     def __init__(self, data, paks, palettePath, game):
@@ -232,40 +232,6 @@ class BSP(object):
 
         return vertices
 
-    def parseLEdges(self, lump):
-        self.data.seek(lump.offset)
-
-        edgeList = []
-        for i in range(0, lump.length//4):
-            index, = struct.unpack("i", self.data.read(4))
-            edgeList.append(index)
-
-        return edgeList
-
-    def parseEdges(self, lump):
-        self.data.seek(lump.offset)
-
-        edges = []
-        for i in range(0, lump.length//4):
-            data = struct.unpack("HH", self.data.read(4))
-            edges.append(Edge(data[0], data[1]))
-    
-        return edges
-
-    def parseFaces(self, lump):
-        self.data.seek(lump.offset)
-
-        faces = []
-        for i in range(0, lump.length//20):
-            self.data.read(4) # skip plane index
-
-            data = struct.unpack("ihh", self.data.read(8))
-            faces.append(Face(data[0], data[1], data[2]))
-
-            self.data.read(8) # skip lightmap info
-        
-        return faces
-
     def parseTextureInfo(self, lump):
         self.data.seek(lump.offset)
 
@@ -318,3 +284,37 @@ class BSP(object):
             textures.append(TextureLoader.loadWAL(self.game, self.data, self.palette))
 
         return textures
+
+    def parseFaces(self, lump):
+        self.data.seek(lump.offset)
+
+        faces = []
+        for i in range(0, lump.length//20):
+            self.data.read(4) # skip plane index
+
+            data = struct.unpack("ihh", self.data.read(8))
+            faces.append(Face(data[0], data[1], data[2]))
+
+            self.data.read(8) # skip lightmap info
+        
+        return faces
+
+    def parseLEdges(self, lump):
+        self.data.seek(lump.offset)
+
+        edgeList = []
+        for i in range(0, lump.length//4):
+            index, = struct.unpack("i", self.data.read(4))
+            edgeList.append(index)
+
+        return edgeList
+
+    def parseEdges(self, lump):
+        self.data.seek(lump.offset)
+
+        edges = []
+        for i in range(0, lump.length//4):
+            data = struct.unpack("HH", self.data.read(4))
+            edges.append(Edge(data[0], data[1]))
+    
+        return edges
